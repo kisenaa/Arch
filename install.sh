@@ -94,7 +94,7 @@ parted -s "$DISK" \
     mklabel gpt \
     mkpart ESP fat32 1MiB 1001MiB \
     set 1 esp on \
-    mkpart root 1001MiB 100GB \
+    mkpart root 1001MiB 104GB \
 
 sleep 0.1
 ESP="/dev/$(lsblk $DISK -o NAME,PARTLABEL | grep ESP| cut -d " " -f1 | cut -c7-)"
@@ -108,6 +108,7 @@ partprobe "$DISK"
 echo "Formatting the EFI Partition as FAT32."
 mkfs.fat -F 32 -s 2 $ESP &>/dev/null
 
+# Creating a LUKS Container for the root partition.
 
 BTRFS="$root"
 
@@ -206,7 +207,7 @@ mount -o nodev,nosuid,noexec $ESP /mnt/boot/efi
 # Pacstrap (setting up a base sytem onto the new root).
 # As I said above, I am considering replacing gnome-software with pamac-flatpak-gnome as PackageKit seems very buggy on Arch Linux right now.
 echo "Installing the base system (it may take a while)."
-pacstrap /mnt base base-devel ${kernel} ${microcode} linux-firmware grub grub-btrfs snapper snap-pac efibootmgr sudo networkmanager apparmor python-psutil python-notify2 dhclient dhcp dhcpcd iwd iw wpa_supplicant dialog netctl ifplugd mkinitcpio nano gdm gnome xorg gnome-control-center gnome-terminal gnome-software gnome-software-packagekit-plugin gnome-tweaks nautilus pipewire-pulse pipewire-alsa pipewire-jack flatpak firewalld adobe-source-han-sans-otc-fonts adobe-source-han-serif-otc-fonts gnu-free-fonts reflector mlocate man-db chrony
+pacstrap /mnt base base-devel ${kernel} ${microcode} linux-firmware grub grub-btrfs snapper snap-pac efibootmgr sudo networkmanager apparmor python-psutil python-notify2 dhclient dhcp dhcpcd mkinitcpio iwd iw wpa_supplicant dialog netctl ifplugd nano gdm gnome xorg gnome-control-center gnome-terminal gnome-software gnome-software-packagekit-plugin gnome-tweaks nautilus pipewire-pulse pipewire-alsa pipewire-jack flatpak firewalld zram-generator adobe-source-han-sans-otc-fonts adobe-source-han-serif-otc-fonts gnu-free-fonts reflector mlocate man-db chrony
 
 # Routing jack2 through PipeWire.
 echo "/usr/lib/pipewire-0.3/jack" > /mnt/etc/ld.so.conf.d/pipewire-jack.conf
@@ -241,7 +242,7 @@ echo "Configuring /etc/mkinitcpio for ZSTD compression and LUKS hook."
 sed -i 's,#COMPRESSION="zstd",COMPRESSION="zstd",g' /mnt/etc/mkinitcpio.conf
 sed -i 's,modconf block filesystems keyboard,keyboard modconf block encrypt filesystems,g' /mnt/etc/mkinitcpio.conf
 
-
+# Enabling LUKS in GRUB and setting the UUID of the LUKS container.
 echo "" >> /mnt/etc/default/grub
 echo -e "# Booting with BTRFS subvolume\nGRUB_BTRFS_OVERRIDE_BOOT_PARTITION_DETECTION=true" >> /mnt/etc/default/grub
 sed -i 's#rootflags=subvol=${rootsubvol}##g' /mnt/etc/grub.d/10_linux
@@ -262,6 +263,7 @@ curl https://raw.githubusercontent.com/GrapheneOS/infrastructure/main/chrony.con
 # Setting GRUB configuration file permissions
 chmod 755 /mnt/etc/grub.d/*
 
+# Adding keyfile to the initramfs to avoid double password.
 
 # Configure AppArmor Parser caching
 sed -i 's/#write-cache/write-cache/g' /mnt/etc/apparmor/parser.conf
@@ -297,7 +299,12 @@ account		required	pam_unix.so
 session		required	pam_unix.so
 EOF
 
-
+# ZRAM configuration
+bash -c 'cat > /mnt/etc/systemd/zram-generator.conf' <<-'EOF'
+[zram0]
+zram-fraction = 1
+max-zram-size = 8192
+EOF
 
 # Randomize Mac Address.
 bash -c 'cat > /mnt/etc/NetworkManager/conf.d/00-macrandomize.conf' <<-'EOF'
@@ -348,7 +355,7 @@ arch-chroot /mnt /bin/bash -e <<EOF
 
     # Installing GRUB.
     echo "Installing GRUB on /boot."
-    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB --modules="normal test efi_gop efi_uga search echo linux all_video gfxmenu gfxterm_background gfxterm_menu gfxterm loadenv configfile tpm gzio part_gpt btrfs" --disable-shim-lock &>/dev/null
+    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB --modules="normal test efi_gop efi_uga search echo linux all_video gfxmenu gfxterm_background gfxterm_menu gfxterm loadenv configfile gzio part_gpt tpm btrfs" --disable-shim-lock &>/dev/null
 
     # Creating grub config file.
     echo "Creating GRUB config file."
