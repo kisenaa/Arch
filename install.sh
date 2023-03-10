@@ -77,8 +77,8 @@ pacman -Sy
 pacman -S --noconfirm curl
 
 # formatting the disk
-wipefs -af "$DISK" &>/dev/null
-sgdisk -Zo "$DISK" &>/dev/null
+wipefs -af "$DISK" 
+sgdisk -Zo "$DISK" 
 
 # Checking the microcode to install.
 CPU=$(grep vendor_id /proc/cpuinfo)
@@ -94,7 +94,7 @@ parted -s "$DISK" \
     mklabel gpt \
     mkpart ESP fat32 1MiB 1001MiB \
     set 1 esp on \
-    mkpart root 1001MiB 104GB \
+    mkpart root 1001MiB 100GB \
 
 sleep 0.1
 ESP="/dev/$(lsblk $DISK -o NAME,PARTLABEL | grep ESP| cut -d " " -f1 | cut -c7-)"
@@ -106,37 +106,36 @@ partprobe "$DISK"
 
 # Formatting the ESP as FAT32.
 echo "Formatting the EFI Partition as FAT32."
-mkfs.fat -F 32 -s 2 $ESP &>/dev/null
+mkfs.fat -F 32 -s 2 $ESP 
 
-# Creating a LUKS Container for the root partition.
 
 BTRFS="$root"
 
 # Formatting the LUKS Container as BTRFS.
 echo "Formatting the LUKS container as BTRFS."
-mkfs.btrfs $BTRFS &>/dev/null
+mkfs.btrfs $BTRFS 
 mount -o clear_cache,nospace_cache $BTRFS /mnt
 
 # Creating BTRFS subvolumes.
 echo "Creating BTRFS subvolumes."
-btrfs su cr /mnt/@ &>/dev/null
-btrfs su cr /mnt/@/.snapshots &>/dev/null
-mkdir -p /mnt/@/.snapshots/1 &>/dev/null
-btrfs su cr /mnt/@/.snapshots/1/snapshot &>/dev/null
-btrfs su cr /mnt/@/boot/ &>/dev/null
-btrfs su cr /mnt/@/home &>/dev/null
-btrfs su cr /mnt/@/root &>/dev/null
-btrfs su cr /mnt/@/srv &>/dev/null
-btrfs su cr /mnt/@/var_log &>/dev/null
-btrfs su cr /mnt/@/var_log_journal &>/dev/null
-btrfs su cr /mnt/@/var_crash &>/dev/null
-btrfs su cr /mnt/@/var_cache &>/dev/null
-btrfs su cr /mnt/@/var_tmp &>/dev/null
-btrfs su cr /mnt/@/var_spool &>/dev/null
-btrfs su cr /mnt/@/var_lib_libvirt_images &>/dev/null
-btrfs su cr /mnt/@/var_lib_machines &>/dev/null
-btrfs su cr /mnt/@/var_lib_gdm &>/dev/null
-btrfs su cr /mnt/@/var_lib_AccountsService &>/dev/null
+btrfs su cr /mnt/@ 
+btrfs su cr /mnt/@/.snapshots 
+mkdir -p /mnt/@/.snapshots/1 
+btrfs su cr /mnt/@/.snapshots/1/snapshot 
+btrfs su cr /mnt/@/boot/ 
+btrfs su cr /mnt/@/home 
+btrfs su cr /mnt/@/root 
+btrfs su cr /mnt/@/srv 
+btrfs su cr /mnt/@/var_log 
+btrfs su cr /mnt/@/var_log_journal 
+btrfs su cr /mnt/@/var_crash 
+btrfs su cr /mnt/@/var_cache 
+btrfs su cr /mnt/@/var_tmp 
+btrfs su cr /mnt/@/var_spool 
+btrfs su cr /mnt/@/var_lib_libvirt_images 
+btrfs su cr /mnt/@/var_lib_machines 
+btrfs su cr /mnt/@/var_lib_gdm 
+btrfs su cr /mnt/@/var_lib_AccountsService 
 
 chattr +C /mnt/@/boot
 chattr +C /mnt/@/srv
@@ -207,7 +206,7 @@ mount -o nodev,nosuid,noexec $ESP /mnt/boot/efi
 # Pacstrap (setting up a base sytem onto the new root).
 # As I said above, I am considering replacing gnome-software with pamac-flatpak-gnome as PackageKit seems very buggy on Arch Linux right now.
 echo "Installing the base system (it may take a while)."
-pacstrap /mnt base base-devel ${kernel} ${microcode} linux-firmware grub grub-btrfs snapper snap-pac efibootmgr sudo networkmanager apparmor python-psutil python-notify2 dhclient dhcp dhcpcd mkinitcpio iwd iw wpa_supplicant dialog netctl ifplugd nano gdm gnome xorg gnome-control-center gnome-terminal gnome-software gnome-software-packagekit-plugin gnome-tweaks nautilus pipewire-pulse pipewire-alsa pipewire-jack flatpak firewalld zram-generator adobe-source-han-sans-otc-fonts adobe-source-han-serif-otc-fonts gnu-free-fonts reflector mlocate man-db chrony
+pacstrap /mnt base base-devel ${kernel} ${microcode} linux-firmware grub grub-btrfs snapper snap-pac efibootmgr sudo networkmanager apparmor python-psutil python-notify2 dhclient dhcp dhcpcd iwd iw wpa_supplicant dialog netctl ifplugd mkinitcpio nano gdm gnome xorg gnome-control-center gnome-terminal gnome-software gnome-software-packagekit-plugin gnome-tweaks nautilus pipewire-pulse pipewire-alsa pipewire-jack flatpak firewalld adobe-source-han-sans-otc-fonts adobe-source-han-serif-otc-fonts gnu-free-fonts reflector mlocate man-db chrony
 
 # Routing jack2 through PipeWire.
 echo "/usr/lib/pipewire-0.3/jack" > /mnt/etc/ld.so.conf.d/pipewire-jack.conf
@@ -242,7 +241,7 @@ echo "Configuring /etc/mkinitcpio for ZSTD compression and LUKS hook."
 sed -i 's,#COMPRESSION="zstd",COMPRESSION="zstd",g' /mnt/etc/mkinitcpio.conf
 sed -i 's,modconf block filesystems keyboard,keyboard modconf block encrypt filesystems,g' /mnt/etc/mkinitcpio.conf
 
-# Enabling LUKS in GRUB and setting the UUID of the LUKS container.
+
 echo "" >> /mnt/etc/default/grub
 echo -e "# Booting with BTRFS subvolume\nGRUB_BTRFS_OVERRIDE_BOOT_PARTITION_DETECTION=true" >> /mnt/etc/default/grub
 sed -i 's#rootflags=subvol=${rootsubvol}##g' /mnt/etc/grub.d/10_linux
@@ -263,7 +262,6 @@ curl https://raw.githubusercontent.com/GrapheneOS/infrastructure/main/chrony.con
 # Setting GRUB configuration file permissions
 chmod 755 /mnt/etc/grub.d/*
 
-# Adding keyfile to the initramfs to avoid double password.
 
 # Configure AppArmor Parser caching
 sed -i 's/#write-cache/write-cache/g' /mnt/etc/apparmor/parser.conf
@@ -299,12 +297,7 @@ account		required	pam_unix.so
 session		required	pam_unix.so
 EOF
 
-# ZRAM configuration
-bash -c 'cat > /mnt/etc/systemd/zram-generator.conf' <<-'EOF'
-[zram0]
-zram-fraction = 1
-max-zram-size = 8192
-EOF
+
 
 # Randomize Mac Address.
 bash -c 'cat > /mnt/etc/NetworkManager/conf.d/00-macrandomize.conf' <<-'EOF'
@@ -330,19 +323,19 @@ chmod 600 /mnt/etc/NetworkManager/conf.d/ip6-privacy.conf
 arch-chroot /mnt /bin/bash -e <<EOF
 
     # Setting up timezone.
-    ln -sf /usr/share/zoneinfo/$(curl -s http://ip-api.com/line?fields=timezone) /etc/localtime &>/dev/null
+    ln -sf /usr/share/zoneinfo/Asia/Jakarta /etc/localtime 
 
     # Setting up clock.
     hwclock --systohc
 
     # Generating locales.my keys aren't even on
     echo "Generating locales."
-    locale-gen &>/dev/null
+    locale-gen 
 
     # Generating a new initramfs.
     echo "Creating a new initramfs."
-    chmod 600 /boot/initramfs-linux* &>/dev/null
-    mkinitcpio -P &>/dev/null
+    chmod 600 /boot/initramfs-linux* 
+    mkinitcpio -P 
 
     # Snapper configuration
     umount /.snapshots
@@ -355,11 +348,11 @@ arch-chroot /mnt /bin/bash -e <<EOF
 
     # Installing GRUB.
     echo "Installing GRUB on /boot."
-    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB --modules="normal test efi_gop efi_uga search echo linux all_video gfxmenu gfxterm_background gfxterm_menu gfxterm loadenv configfile gzio part_gpt tpm btrfs" --disable-shim-lock &>/dev/null
+    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB --modules="normal test efi_gop efi_uga search echo linux all_video gfxmenu gfxterm_background gfxterm_menu gfxterm loadenv configfile gzio part_gpt tpm btrfs" --disable-shim-lock 
 
     # Creating grub config file.
     echo "Creating GRUB config file."
-    grub-mkconfig -o /boot/grub/grub.cfg &>/dev/null
+    grub-mkconfig -o /boot/grub/grub.cfg 
 
     # Adding user with sudo privilege
     if [ -n "$username" ]; then
@@ -389,7 +382,7 @@ chmod 700 /mnt/home/${username}/.config/autostart/apparmor-notify.desktop
 arch-chroot /mnt chown -R $username:$username /home/${username}/.config
 
 # Setting user password.
-[ -n "$username" ] && echo "Setting user password for ${username}." && echo -e "${password}\n${password}" | arch-chroot /mnt passwd "$username" &>/dev/null
+[ -n "$username" ] && echo "Setting user password for ${username}." && echo -e "${password}\n${password}" | arch-chroot /mnt passwd "$username" 
 
 # Giving wheel user sudo access.
 sed -i 's/# \(%wheel ALL=(ALL\(:ALL\|\)) ALL\)/\1/g' /mnt/etc/sudoers
@@ -398,48 +391,48 @@ sed -i 's/# \(%wheel ALL=(ALL\(:ALL\|\)) ALL\)/\1/g' /mnt/etc/sudoers
 echo "log_group = audit" >> /mnt/etc/audit/auditd.conf
 
 # Enabling audit service.
-systemctl enable auditd --root=/mnt &>/dev/null
+systemctl enable auditd --root=/mnt 
 
 # Enabling auto-trimming service.
-systemctl enable fstrim.timer --root=/mnt &>/dev/null
+systemctl enable fstrim.timer --root=/mnt 
 
 # Enabling NetworkManager.
-systemctl enable NetworkManager --root=/mnt &>/dev/null
+systemctl enable NetworkManager --root=/mnt 
 
 # Enabling GDM.
-systemctl enable gdm --root=/mnt &>/dev/null
+systemctl enable gdm --root=/mnt 
 
 # Enabling AppArmor.
 echo "Enabling AppArmor."
-systemctl enable apparmor --root=/mnt &>/dev/null
+systemctl enable apparmor --root=/mnt 
 
 # Enabling Firewalld.
 echo "Enabling Firewalld."
-systemctl enable firewalld --root=/mnt &>/dev/null
+systemctl enable firewalld --root=/mnt 
 
 # Enabling Bluetooth Service (This is only to fix the visual glitch with gnome where it gets stuck in the menu at the top right).
 # IF YOU WANT TO USE BLUETOOTH, YOU MUST REMOVE IT FROM THE LIST OF BLACKLISTED KERNEL MODULES IN /mnt/etc/modprobe.d/30_security-misc.conf
-systemctl enable bluetooth --root=/mnt &>/dev/null
+systemctl enable bluetooth --root=/mnt 
 
 # Enabling Reflector timer.
 echo "Enabling Reflector."
-systemctl enable reflector.timer --root=/mnt &>/dev/null
+systemctl enable reflector.timer --root=/mnt 
 
 # Enabling systemd-oomd.
 echo "Enabling systemd-oomd."
-systemctl enable systemd-oomd --root=/mnt &>/dev/null
+systemctl enable systemd-oomd --root=/mnt 
 
 # Disabling systemd-timesyncd
-systemctl disable systemd-timesyncd --root=/mnt &>/dev/null
+systemctl disable systemd-timesyncd --root=/mnt 
 
 # Enabling chronyd
-systemctl enable chronyd --root=/mnt &>/dev/null
+systemctl enable chronyd --root=/mnt 
 
 # Enabling Snapper automatic snapshots.
 echo "Enabling Snapper and automatic snapshots entries."
-systemctl enable snapper-timeline.timer --root=/mnt &>/dev/null
-systemctl enable snapper-cleanup.timer --root=/mnt &>/dev/null
-systemctl enable grub-btrfs.path --root=/mnt &>/dev/null
+systemctl enable snapper-timeline.timer --root=/mnt 
+systemctl enable snapper-cleanup.timer --root=/mnt 
+systemctl enable grub-btrfs.path --root=/mnt 
 
 # Setting umask to 077.
 sed -i 's/022/077/g' /mnt/etc/profile
