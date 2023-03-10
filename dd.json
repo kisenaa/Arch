@@ -1,0 +1,38 @@
+{
+    "/dev/nvme1n1": {
+        "partitions": [
+            {
+                "boot": true,
+                "encrypted": false,
+                "filesystem": {
+                    "format": "fat32"
+                },
+                "wipe": true,
+                "mountpoint": "/boot",
+                "size": "100%",
+                "start": "930510MB",
+                "type": "primary"
+            },
+            {
+                "btrfs": {
+                    "subvolumes": {
+                        "@.snapshots": "/.snapshots",
+                        "@home": "/home",
+                        "@log": "/var/log",
+                        "@pkgs": "/var/cache/pacman/pkg"
+                    }
+                },
+                "encrypted": false,
+                "filesystem": {
+                    "format": "btrfs"
+                },
+                "wipe": true,
+                "mountpoint": "/",
+                "size": "80GB",
+                "start": "850510MB",
+                "type": "primary"
+            }
+        ],
+        "wipe": false
+    }
+}
